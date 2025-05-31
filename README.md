@@ -5,6 +5,7 @@ A collection of Python scripts for managing and analyzing concert attendance dat
 ## Scripts
 
 - `bands_seen.py`: Main script for tracking bands seen at concerts
+- `venues.py`: Script for tracking and counting venues visited
 - `appsheet_utils.py`: Utilities for working with AppSheet data
 - `most_by_letter.py`: Analysis of bands by letter frequency
 - `duplicates.py`: Script for finding duplicate entries
