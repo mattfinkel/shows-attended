@@ -1,11 +1,9 @@
-import os
 import requests
 import json
 from datetime import datetime
+from config import APP_ID, ACCESS_KEY
 
 # AppSheet API configuration
-APP_ID = os.getenv('APPSHEET_APP_ID')
-ACCESS_KEY = os.getenv('APPSHEET_ACCESS_KEY')
 TABLE_NAME = 'Shows'
 
 # Common band name equivalents
