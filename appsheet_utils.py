@@ -13,7 +13,7 @@ EQUIVALENTS = [
     ("Chuck Ragan", "Chuck Ragan & The Camradarie")
 ]
 
-def get_appsheet_data():
+def get_appsheet_data(table_name=None):
     """Fetches data from AppSheet API."""
     if not APP_ID or not ACCESS_KEY:
         raise ValueError("Please set APPSHEET_APP_ID and APPSHEET_ACCESS_KEY environment variables")
@@ -24,7 +24,9 @@ def get_appsheet_data():
         'ApplicationAccessKey': ACCESS_KEY
     }
 
-    url = f'https://api.appsheet.com/api/v2/apps/{APP_ID}/tables/{TABLE_NAME}/Action'
+    # Use the provided table_name or default to TABLE_NAME
+    table = table_name if table_name else TABLE_NAME
+    url = f'https://api.appsheet.com/api/v2/apps/{APP_ID}/tables/{table}/Action'
     payload = {
         "Action": "Find",
         "Properties": {
@@ -65,4 +67,8 @@ def get_band_equivalents():
 
 def normalize_band_name(band_name):
     """Normalizes a band name for comparison by removing common prefixes and special characters."""
-    return band_name.lower().replace('the ', '').replace('and ', '').replace('& ', '').replace("'", '').replace('.', '').replace('!', '').replace(' ', '') 
+    return band_name.lower().replace('the ', '').replace('and ', '').replace('& ', '').replace("'", '').replace('.', '').replace('!', '').replace(' ', '')
+
+def get_venues_data():
+    """Fetches the Venues table data from AppSheet."""
+    return get_appsheet_data(table_name='Venues') 
