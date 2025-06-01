@@ -36,4 +36,9 @@ ENV/
 Thumbs.db 
 
 # Local configuration
-config/local.py 
+python/config/local.py
+python/config/*.local.py
+*.local.py
+.env
+.env.*
+!.env.example 
