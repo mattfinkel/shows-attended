@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Shows Attended</title>
+    <link rel="stylesheet" href="static/style.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="bottom-nav">
+        <button class="nav-btn active" data-view="shows">
+            <span class="icon">📅</span>
+            <span>Shows</span>
+        </button>
+        <button class="nav-btn" data-view="bands">
+            <span class="icon">🎸</span>
+            <span>Bands</span>
+        </button>
+        <button class="nav-btn" data-view="venues">
+            <span class="icon">📍</span>
+            <span>Venues</span>
+        </button>
+        <button class="nav-btn" data-view="add">
+            <span class="icon">➕</span>
+            <span>Add</span>
+        </button>
+        <button class="nav-btn" data-view="stats">
+            <span class="icon">📊</span>
+            <span>Stats</span>
+        </button>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container">
+
+        <!-- Shows View -->
+        <div id="shows-view" class="view active">
+            <div class="header">
+                <h1>Shows</h1>
+            </div>
+
+            <div class="filters">
+                <input type="text" id="show-search" placeholder="Search shows..." class="search-input">
+                <select id="year-filter" class="filter-select">
+                    <option value="">All Years</option>
+                </select>
+            </div>
+
+            <div id="shows-list" class="shows-list"></div>
+            <button id="load-more-shows" class="btn-secondary">Load More</button>
+        </div>
+
+        <!-- Bands View -->
+        <div id="bands-view" class="view">
+            <div class="header">
+                <h1>Bands</h1>
+            </div>
+
+            <div class="filters">
+                <input type="text" id="band-search" placeholder="Search bands..." class="search-input">
+                <select id="min-shows-filter" class="filter-select">
+                    <option value="1">All</option>
+                    <option value="5">5+ shows</option>
+                    <option value="10">10+ shows</option>
+                    <option value="20">20+ shows</option>
+                </select>
+            </div>
+
+            <div id="bands-list" class="bands-list"></div>
+        </div>
+
+        <!-- Venues View -->
+        <div id="venues-view" class="view">
+            <div class="header">
+                <h1>Venues</h1>
+            </div>
+
+            <div class="filters">
+                <input type="text" id="venue-search" placeholder="Search venues..." class="search-input">
+                <select id="min-venue-shows-filter" class="filter-select">
+                    <option value="1">All</option>
+                    <option value="5">5+ shows</option>
+                    <option value="10">10+ shows</option>
+                    <option value="20">20+ shows</option>
+                </select>
+            </div>
+
+            <div id="venues-list" class="venues-list"></div>
+        </div>
+
+        <!-- Add Show View -->
+        <div id="add-view" class="view">
+            <div class="header">
+                <h1>Add Show</h1>
+            </div>
+
+            <form id="add-show-form">
+                <div class="form-group">
+                    <label for="show-date">Date</label>
+                    <input type="date" id="show-date" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Bands</label>
+                    <div class="band-input-container">
+                        <input type="text" id="band-input" placeholder="Add band..." autocomplete="off">
+                        <div id="band-suggestions" class="suggestions"></div>
+                    </div>
+                    <div id="bands-added" class="bands-added"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="show-venue">Venue</label>
+                    <input type="text" id="show-venue" placeholder="Start typing venue name..." required autocomplete="off">
+                    <div id="venue-suggestions" class="suggestions"></div>
+                </div>
+
+                <div class="form-group" id="venue-location-group" style="display: none;">
+                    <label for="venue-location">Venue Address (optional)</label>
+                    <input type="text" id="venue-location" placeholder="123 Main St, City, State">
+                </div>
+
+                <div class="form-group">
+                    <label for="show-event">Event (optional)</label>
+                    <input type="text" id="show-event" placeholder="e.g., Punk Rock Bowling" autocomplete="off">
+                    <div id="event-suggestions" class="suggestions"></div>
+                </div>
+
+                <button type="submit" class="btn-primary">Add Show</button>
+            </form>
+        </div>
+
+        <!-- Stats View -->
+        <div id="stats-view" class="view">
+            <div class="header">
+                <h1>Statistics</h1>
+            </div>
+
+            <div class="stats-cards">
+                <div class="stat-card">
+                    <div class="stat-value" id="total-shows">-</div>
+                    <div class="stat-label">Total Shows</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="total-bands">-</div>
+                    <div class="stat-label">Bands Seen</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="total-venues">-</div>
+                    <div class="stat-label">Venues</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="date-range">-</div>
+                    <div class="stat-label">Years</div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>Shows by Year</h2>
+                <div id="years-list"></div>
+            </div>
+
+            <div class="section">
+                <h2>Top Bands (All Time)</h2>
+                <div id="top-bands-list"></div>
+            </div>
+
+            <div class="section">
+                <h2>Top Venues (All Time)</h2>
+                <div id="top-venues-list"></div>
+            </div>
+        </div>
+
+        <!-- Band Detail Modal -->
+        <div id="band-modal" class="modal">
+            <div class="modal-content">
+                <button class="modal-close">&times;</button>
+                <h2 id="band-modal-name"></h2>
+                <div id="band-modal-stats" class="modal-stats"></div>
+                <div id="band-modal-shows" class="modal-shows"></div>
+            </div>
+        </div>
+
+        <!-- Venue Detail Modal -->
+        <div id="venue-modal" class="modal">
+            <div class="modal-content">
+                <button class="modal-close venue-modal-close">&times;</button>
+                <h2 id="venue-modal-name"></h2>
+                <div id="venue-modal-location" class="modal-location"></div>
+                <div id="venue-modal-stats" class="modal-stats"></div>
+                <div id="venue-modal-shows" class="modal-shows"></div>
+            </div>
+        </div>
+
+        <!-- Event Detail Modal -->
+        <div id="event-modal" class="modal">
+            <div class="modal-content">
+                <button class="modal-close event-modal-close">&times;</button>
+                <h2 id="event-modal-name"></h2>
+                <div id="event-modal-stats" class="modal-stats"></div>
+                <div id="event-modal-shows" class="modal-shows"></div>
+            </div>
+        </div>
+
+        <!-- Year Detail Modal -->
+        <div id="year-modal" class="modal">
+            <div class="modal-content">
+                <button class="modal-close year-modal-close">&times;</button>
+                <h2 id="year-modal-title"></h2>
+
+                <div class="stats-cards-small">
+                    <div class="stat-card-small">
+                        <div class="stat-value-small" id="year-total-shows">-</div>
+                        <div class="stat-label-small">Shows</div>
+                    </div>
+                    <div class="stat-card-small">
+                        <div class="stat-value-small" id="year-unique-bands">-</div>
+                        <div class="stat-label-small">Bands</div>
+                    </div>
+                    <div class="stat-card-small">
+                        <div class="stat-value-small" id="year-unique-venues">-</div>
+                        <div class="stat-label-small">Venues</div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h3>Top Bands</h3>
+                    <div id="year-top-bands"></div>
+                </div>
+
+                <div class="section">
+                    <h3>Top Venues</h3>
+                    <div id="year-top-venues"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Show Modal -->
+        <div id="edit-show-modal" class="modal">
+            <div class="modal-content">
+                <button class="modal-close edit-show-close">&times;</button>
+                <h2>Edit Show</h2>
+
+                <form id="edit-show-form">
+                    <input type="hidden" id="edit-show-id">
+
+                    <div class="form-group">
+                        <label for="edit-show-date">Date</label>
+                        <input type="date" id="edit-show-date" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="edit-show-venue">Venue</label>
+                        <input type="text" id="edit-show-venue" placeholder="Start typing venue name..." required autocomplete="off">
+                        <div id="edit-venue-suggestions" class="suggestions"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="edit-show-event">Event (optional)</label>
+                        <input type="text" id="edit-show-event" placeholder="e.g., Punk Rock Bowling">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Bands</label>
+                        <div class="band-input-container">
+                            <input type="text" id="edit-band-input" placeholder="Add band..." autocomplete="off">
+                            <div id="edit-band-suggestions" class="suggestions"></div>
+                        </div>
+                        <div id="edit-bands-added" class="bands-added"></div>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="submit" class="btn-primary">Save Changes</button>
+                        <button type="button" class="btn-danger" id="delete-show-btn">Delete Show</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="static/app.js"></script>
+</body>
+</html>

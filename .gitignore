@@ -41,4 +41,9 @@ python/config/*.local.py
 *.local.py
 .env
 .env.*
-!.env.example 
+!.env.example
+
+# Database and logs
+webapp/database/shows.db
+webapp/server.log
+nohup.out 
