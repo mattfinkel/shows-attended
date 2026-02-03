@@ -46,4 +46,8 @@ python/config/*.local.py
 # Database and logs
 webapp/database/shows.db
 webapp/server.log
-nohup.out 
+webapp_fastapi_old/database/shows.db
+webapp_fastapi_old/server.log
+streamlit_app/streamlit.log
+nohup.out
+*.log 

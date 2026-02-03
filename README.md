@@ -1,49 +1,32 @@
 # Shows Attended
 
-A web application for tracking concerts and shows attended, with full CRUD operations, statistics, and mobile-friendly interface.
+A Streamlit web application for tracking concerts and shows attended, with full CRUD operations, statistics, and charts.
 
 ## Features
 
 - 📅 **Show Tracking**: Record shows with date, bands, venue, and event
 - 🎸 **Band Statistics**: See which bands you've seen most, view all shows for each band
 - 📍 **Venue Tracking**: Track venues visited with show counts and details
-- 🎉 **Event Navigation**: Filter by events like festivals and tours
-- 📊 **Statistics**: View stats by year, top bands, top venues
-- 📱 **Mobile-First Design**: Responsive dark-themed interface optimized for mobile
+- 🎉 **Event Navigation**: Track events like festivals and tours
+- 📊 **Statistics**: Charts and stats by year, top bands, top venues
 - ✏️ **Full CRUD**: Add, edit, and delete shows with autocomplete
-
-## Project Structure
-
-```
-shows-attended/
-├── webapp/                    # Main web application
-│   ├── backend/              # FastAPI backend
-│   │   └── main.py           # API endpoints
-│   ├── database/             # SQLite database and migrations
-│   │   ├── schema.sql        # Database schema
-│   │   ├── init_db.py        # Initial data import from AppSheet
-│   │   ├── migrate_events.py # Events table migration
-│   │   └── shows.db          # SQLite database
-│   ├── frontend/             # HTML/CSS/JS frontend
-│   │   ├── index.html
-│   │   ├── app.js
-│   │   └── style.css
-│   └── server.log            # Server logs
-├── python/                    # Legacy analysis scripts
-│   ├── appsheet_import.py    # Original AppSheet import
-│   ├── bands_seen.py         # Band analysis
-│   ├── duplicates.py         # Find duplicates
-│   ├── venues.py             # Venue analysis
-│   └── most_by_letter.py     # Letter frequency analysis
-└── README.md
-```
+- 🌙 **Dark Theme**: Easy on the eyes
 
 ## Tech Stack
 
-- **Backend**: Python FastAPI
+- **Framework**: Streamlit (Pure Python)
 - **Database**: SQLite with normalized relational schema
-- **Frontend**: Vanilla HTML/CSS/JavaScript
-- **Deployment**: Self-hosted or any Python-capable host
+- **Deployment**: Streamlit Cloud, Railway, or any Python host
+
+## Quick Start
+
+```bash
+cd streamlit_app
+pip install -r requirements.txt
+streamlit run app.py
+```
+
+The app will open at http://localhost:8501
 
 ## Database Schema
 
@@ -60,115 +43,101 @@ shows-attended/
 - `show_bands.show_id` → `shows.id` (CASCADE delete)
 - `show_bands.band_id` → `bands.id`
 
-## Setup
+## Project Structure
 
-### Prerequisites
-- Python 3.7+
-- pip
-
-### Installation
-
-1. Clone the repository:
-   ```bash
-   git clone <your-repo-url>
-   cd shows-attended
-   ```
-
-2. Install Python dependencies:
-   ```bash
-   pip install fastapi uvicorn
-   ```
-
-3. Initialize the database (if starting fresh):
-   ```bash
-   cd webapp/database
-   sqlite3 shows.db < schema.sql
-   ```
-
-4. Start the server:
-   ```bash
-   cd webapp
-   python3 backend/main.py
-   ```
-
-5. Open your browser to:
-   ```
-   http://localhost:8000/app
-   ```
-
-## Usage
-
-### Adding Shows
-1. Click the **Add** tab in the bottom navigation
-2. Enter date, bands (in order), venue, and optional event
-3. Use autocomplete for existing bands/venues/events
-4. Submit to save
-
-### Viewing Statistics
-- **Shows Tab**: Browse all shows with search and year filters
-- **Bands Tab**: See bands sorted by times seen, with search
-- **Venues Tab**: View venues with show counts
-- **Stats Tab**: Overall statistics and year-by-year breakdowns
-
-### Navigation
-- Click any band name to see all shows for that band
-- Click any venue to see all shows at that venue
-- Click any event to see all shows for that event
-- Click the **Edit** button on any show to modify or delete it
-
-## API Endpoints
-
-### Shows
-- `GET /api/shows` - List shows with filters
-- `GET /api/shows/{id}` - Get single show
-- `POST /api/shows` - Create show
-- `PUT /api/shows/{id}` - Update show
-- `DELETE /api/shows/{id}` - Delete show
-
-### Bands
-- `GET /api/bands/stats` - Band statistics
-- `GET /api/bands/{id}/shows` - Shows for band
-
-### Venues
-- `GET /api/venues/stats` - Venue statistics
-- `GET /api/venues/{id}/shows` - Shows at venue
-
-### Events
-- `GET /api/events/stats` - Event statistics
-- `GET /api/events/{id}/shows` - Shows for event
-
-### Stats
-- `GET /api/stats/summary` - Overall summary
-- `GET /api/stats/by-year` - Shows by year
-- `GET /api/stats/year/{year}` - Year details
-
-### Autocomplete
-- `GET /api/autocomplete/bands?q={query}`
-- `GET /api/autocomplete/venues?q={query}`
-- `GET /api/autocomplete/events?q={query}`
-
-## Development
-
-### Running in Development Mode
-```bash
-cd webapp
-uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+```
+shows-attended/
+├── streamlit_app/              # Main Streamlit application
+│   ├── .streamlit/
+│   │   └── config.toml         # Dark theme configuration
+│   ├── pages/
+│   │   ├── 1_Add_Show.py       # Add new shows
+│   │   ├── 2_Edit_Show.py      # Edit/delete shows
+│   │   ├── 3_Bands.py          # Band statistics
+│   │   ├── 4_Venues.py         # Venue statistics
+│   │   └── 5_Stats.py          # Overall statistics
+│   ├── app.py                  # Main page (shows list)
+│   ├── requirements.txt
+│   └── README.md
+├── webapp_fastapi_old/         # Legacy FastAPI version (archived)
+│   └── database/
+│       └── shows.db            # SQLite database (shared)
+└── python/                     # Legacy analysis scripts
 ```
 
-### Database Migrations
-Migration scripts are in `webapp/database/`:
-- `init_db.py` - Initial import from AppSheet
-- `migrate_events.py` - Migrate events to separate table
-- `drop_old_event_column.py` - Clean up old event column
+## Pages
+
+- **Shows** (main) - Browse all shows with search and filters
+- **Add Show** - Form to add new shows with autocomplete
+- **Edit Show** - View and delete shows
+- **Bands** - Band statistics with expandable show history
+- **Venues** - Venue statistics with expandable show history
+- **Stats** - Charts and overall statistics
+
+## Deployment
+
+### Streamlit Cloud (Recommended)
+
+1. Push to GitHub
+2. Go to https://share.streamlit.io
+3. Connect your repository
+4. Set main file: `streamlit_app/app.py`
+5. Deploy!
+
+**Note**: You'll need to handle the database file. Options:
+- Upload `shows.db` to the repo (if < 100MB)
+- Use Streamlit secrets for database connection
+- Connect to a hosted SQLite/Postgres instance
+
+### Railway / Render
+
+```bash
+# Install dependencies
+pip install -r streamlit_app/requirements.txt
+
+# Run the app
+streamlit run streamlit_app/app.py --server.port=$PORT --server.address=0.0.0.0
+```
+
+## Database Location
+
+The database is located at: `webapp_fastapi_old/database/shows.db`
+
+To initialize a fresh database:
+```bash
+cd webapp_fastapi_old/database
+sqlite3 shows.db < schema.sql
+```
 
 ## Migration from AppSheet
 
-This project was migrated from AppSheet. The original AppSheet data was imported using `webapp/database/init_db.py`, which:
+This project was migrated from AppSheet. The original AppSheet data was imported using `webapp_fastapi_old/database/init_db.py`, which:
 - Fetched all shows, bands, and venues from AppSheet API
 - Normalized the data into relational tables
 - Preserved band ordering and all relationships
 
-Legacy scripts in `python/` directory were used for the migration and analysis.
+Current data:
+- **1,125 shows** spanning 2006-2025
+- **1,369 unique bands**
+- **342 venues**
+- **18 events**
+
+## Development History
+
+This app went through several iterations:
+1. **AppSheet** (2006-2025) - No-code platform, great UX but slow setup
+2. **FastAPI + Vanilla JS** (Jan 2026) - Custom mobile-first UI with dark theme
+3. **Streamlit** (Feb 2026) - Current version, simpler codebase and deployment
+
+The FastAPI version is archived in `webapp_fastapi_old/` for reference.
+
+## Legacy Scripts
+
+The `python/` directory contains legacy analysis scripts from the AppSheet era:
+- `bands_seen.py` - Band frequency analysis
+- `duplicates.py` - Find duplicate entries
+- `venues.py` - Venue analysis
+- `most_by_letter.py` - Letter frequency analysis
 
 ## License
 
