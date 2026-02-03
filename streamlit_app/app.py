@@ -3,9 +3,8 @@ Shows Attended - Streamlit App
 Main page: Shows list with search and filters
 """
 import streamlit as st
-import sqlite3
-from pathlib import Path
 from datetime import datetime
+from db import get_db
 
 # Page config
 st.set_page_config(
@@ -84,17 +83,6 @@ st.markdown("""
     }
     </style>
 """, unsafe_allow_html=True)
-
-# Database path
-DB_PATH = Path(__file__).parent.parent / "webapp_fastapi_old" / "database" / "shows.db"
-
-@st.cache_resource
-def get_db():
-    """Get database connection"""
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
-    return conn
 
 def format_date(date_str):
     """Format date string"""

@@ -2,9 +2,11 @@
 Statistics Page
 """
 import streamlit as st
-import sqlite3
-from pathlib import Path
 import pandas as pd
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent))
+from db import get_db
 
 st.set_page_config(page_title="Stats", page_icon="📊", layout="wide")
 
@@ -27,15 +29,6 @@ st.markdown("""
     }
     </style>
 """, unsafe_allow_html=True)
-
-DB_PATH = Path(__file__).parent.parent.parent / "webapp_fastapi_old" / "database" / "shows.db"
-
-@st.cache_resource
-def get_db():
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
-    return conn
 
 st.title("📊 Statistics")
 
