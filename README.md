@@ -1,143 +1,212 @@
-# Shows Attended
+# Shows Attended 🎸
 
-A Streamlit web application for tracking concerts and shows attended, with full CRUD operations, statistics, and charts.
+A Streamlit web application for tracking concerts and shows attended, with band grouping, statistics, and cloud database sync.
 
 ## Features
 
-- 📅 **Show Tracking**: Record shows with date, bands, venue, and event
-- 🎸 **Band Statistics**: See which bands you've seen most, view all shows for each band
-- 📍 **Venue Tracking**: Track venues visited with show counts and details
-- 🎉 **Event Navigation**: Track events like festivals and tours
-- 📊 **Statistics**: Charts and stats by year, top bands, top venues
-- ✏️ **Full CRUD**: Add, edit, and delete shows with autocomplete
+- 📅 **Show Tracking**: Browse all 1,125+ shows with search and filters
+- 🎤 **Band Grouping**: Group band name variations together (e.g., "Lenny Lashley", "Lenny Lashley & Friends")
+- ✏️ **Edit Capabilities**: Edit band names, venue details, and closed status
+- 📍 **Venue Management**: Track venues with location and closed status indicators
+- 📊 **Statistics**: Charts by year, top bands (with grouping), top venues
+- 🎯 **Sorting**: Sort bands and venues by count or alphabetically
+- 🔐 **Password Protection**: Optional password authentication with session persistence
+- ☁️ **Cloud Database**: Data stored in Turso (libSQL) for access from anywhere
 - 🌙 **Dark Theme**: Easy on the eyes
+
+## Live Demo
+
+🚀 [Visit the live app](https://shows-attended.streamlit.app) _(coming soon)_
 
 ## Tech Stack
 
-- **Framework**: Streamlit (Pure Python)
-- **Database**: SQLite with normalized relational schema
-- **Deployment**: Streamlit Cloud, Railway, or any Python host
+- **Framework**: Streamlit (Python)
+- **Database**: Turso (libSQL) - serverless SQLite
+- **Deployment**: Streamlit Cloud
+- **Authentication**: SHA-256 password hashing with session persistence
+- **Testing**: pytest with comprehensive test coverage
 
 ## Quick Start
 
+### Local Development
+
 ```bash
-cd streamlit_app
+# Clone the repository
+git clone https://github.com/mattfinkel/shows-attended.git
+cd shows-attended/streamlit_app
+
+# Install dependencies
 pip install -r requirements.txt
+
+# Set up secrets (copy and edit)
+cp .streamlit/secrets.toml.example .streamlit/secrets.toml
+
+# Run the app
 streamlit run app.py
 ```
 
 The app will open at http://localhost:8501
 
+### Required Secrets
+
+Create `.streamlit/secrets.toml`:
+
+```toml
+[turso]
+database_url = "https://your-database.turso.io"
+auth_token = "your-turso-auth-token"
+
+# Optional: Password protection
+app_password_hash = "your-sha256-hash"
+```
+
+See [PASSWORD_SETUP.md](streamlit_app/PASSWORD_SETUP.md) for password configuration.
+
 ## Database Schema
 
 ### Tables
 - **shows**: Show records with date, venue, and optional event
-- **bands**: Unique band names
-- **venues**: Venue names and locations
+- **bands**: Band names with optional `primary_band_id` for grouping
+- **venues**: Venue names, locations, and closed status
 - **events**: Festival/tour event names
 - **show_bands**: Many-to-many junction table with band ordering
 
-### Relationships
-- `shows.venue_id` → `venues.id`
-- `shows.event_id` → `events.id`
-- `show_bands.show_id` → `shows.id` (CASCADE delete)
-- `show_bands.band_id` → `bands.id`
+### Band Grouping
+Bands can be grouped together using `primary_band_id`:
+- Primary band: `primary_band_id IS NULL`
+- Alias band: `primary_band_id` points to primary band
+- Stats automatically roll up to primary band
+
+Example: "Dropkick Murphys" (primary) + "[Dropkick Murphys]" (alias) = combined stats
 
 ## Project Structure
 
 ```
 shows-attended/
-├── streamlit_app/              # Main Streamlit application
+├── streamlit_app/
 │   ├── .streamlit/
-│   │   └── config.toml         # Dark theme configuration
+│   │   ├── config.toml           # Dark theme
+│   │   └── secrets.toml          # Credentials (gitignored)
 │   ├── pages/
-│   │   ├── 1_Add_Show.py       # Add new shows
-│   │   ├── 2_Edit_Show.py      # Edit/delete shows
-│   │   ├── 3_Bands.py          # Band statistics
-│   │   ├── 4_Venues.py         # Venue statistics
-│   │   └── 5_Stats.py          # Overall statistics
-│   ├── app.py                  # Main page (shows list)
+│   │   ├── 1_Bands.py            # Band stats with grouping
+│   │   ├── 2_Venues.py           # Venue stats with editing
+│   │   └── 3_Stats.py            # Charts and statistics
+│   ├── app.py                    # Main page (shows list)
+│   ├── db.py                     # Turso database wrapper
+│   ├── auth.py                   # Password authentication
+│   ├── test_app.py               # Test suite (30+ tests)
 │   ├── requirements.txt
-│   └── README.md
-├── webapp_fastapi_old/         # Legacy FastAPI version (archived)
-│   └── database/
-│       └── shows.db            # SQLite database (shared)
-└── python/                     # Legacy analysis scripts
+│   ├── PASSWORD_SETUP.md         # Password config guide
+│   └── TESTING.md                # Testing guide
+├── .gitignore
+└── README.md
 ```
 
-## Pages
+## Features in Detail
 
-- **Shows** (main) - Browse all shows with search and filters
-- **Add Show** - Form to add new shows with autocomplete
-- **Edit Show** - View and delete shows
-- **Bands** - Band statistics with expandable show history
-- **Venues** - Venue statistics with expandable show history
-- **Stats** - Charts and overall statistics
+### Band Grouping
+
+Group band name variations together:
+- Click "⚙️ Manage Groups" on Bands page
+- Select primary band and aliases
+- Stats automatically combine (e.g., 17 + 11 + 2 = 30 total shows)
+- Individual shows still show the actual band name used
+
+### Password Protection
+
+Optional authentication to restrict access:
+1. Generate hash: `python generate_password_hash.py "your-password"`
+2. Add to secrets: `app_password_hash = "hash"`
+3. Users stay logged in per device
+4. Logout button in sidebar
+
+### Sorting
+
+Both Bands and Venues pages support sorting:
+- **By Count**: Most shows first (default)
+- **By Name**: Alphabetical order
+
+### Editing
+
+- **Band names**: Click ✏️ on any band to rename
+- **Venue details**: Edit name, location, and closed status
+- **Closed venues**: Marked with 🔒 icon
 
 ## Deployment
 
-### Streamlit Cloud (Recommended)
+### Streamlit Cloud
 
-1. Push to GitHub
+1. **Make repository public** (credentials are in secrets, not code)
 2. Go to https://share.streamlit.io
-3. Connect your repository
-4. Set main file: `streamlit_app/app.py`
-5. Deploy!
+3. Click "New app"
+4. Configure:
+   - Repository: `mattfinkel/shows-attended`
+   - Branch: `main`
+   - Main file: `streamlit_app/app.py`
+5. Add secrets (Advanced settings → Secrets)
+6. Deploy!
 
-**Note**: You'll need to handle the database file. Options:
-- Upload `shows.db` to the repo (if < 100MB)
-- Use Streamlit secrets for database connection
-- Connect to a hosted SQLite/Postgres instance
+See deployment guide for full instructions.
 
-### Railway / Render
+### Database Setup (Turso)
 
 ```bash
-# Install dependencies
-pip install -r streamlit_app/requirements.txt
+# Install Turso CLI
+curl -sSfL https://get.tur.so/install.sh | bash
 
-# Run the app
-streamlit run streamlit_app/app.py --server.port=$PORT --server.address=0.0.0.0
+# Login
+turso auth login
+
+# Create database
+turso db create shows-attended
+
+# Get credentials
+turso db show shows-attended
+turso db tokens create shows-attended
 ```
 
-## Database Location
+## Testing
 
-The database is located at: `webapp_fastapi_old/database/shows.db`
+Run the comprehensive test suite:
 
-To initialize a fresh database:
 ```bash
-cd webapp_fastapi_old/database
-sqlite3 shows.db < schema.sql
+# Install test dependencies
+pip install pytest
+
+# Set your Turso token
+export TURSO_TEST_DB_TOKEN="your-token"
+
+# Run all tests
+pytest streamlit_app/test_app.py -v
 ```
 
-## Migration from AppSheet
+See [TESTING.md](streamlit_app/TESTING.md) for details.
 
-This project was migrated from AppSheet. The original AppSheet data was imported using `webapp_fastapi_old/database/init_db.py`, which:
-- Fetched all shows, bands, and venues from AppSheet API
-- Normalized the data into relational tables
-- Preserved band ordering and all relationships
+### Test Coverage
 
-Current data:
-- **1,125 shows** spanning 2006-2025
-- **1,369 unique bands**
+- ✅ Authentication (password hashing, sessions)
+- ✅ Database connectivity
+- ✅ Band grouping logic
+- ✅ Venue operations
+- ✅ Statistics queries
+- ✅ Sorting (count and name)
+
+## Current Data
+
+- **1,125 shows** spanning 2006-2026
+- **1,363 unique bands** (primary bands only)
 - **342 venues**
 - **18 events**
 
 ## Development History
 
-This app went through several iterations:
-1. **AppSheet** (2006-2025) - No-code platform, great UX but slow setup
-2. **FastAPI + Vanilla JS** (Jan 2026) - Custom mobile-first UI with dark theme
-3. **Streamlit** (Feb 2026) - Current version, simpler codebase and deployment
+1. **AppSheet** (2006-2025) - No-code platform, limited customization
+2. **FastAPI + Vanilla JS** (Jan 2026) - Custom UI, local SQLite
+3. **Streamlit + Turso** (Feb 2026) - Current version with cloud database
 
-The FastAPI version is archived in `webapp_fastapi_old/` for reference.
+## Contributing
 
-## Legacy Scripts
-
-The `python/` directory contains legacy analysis scripts from the AppSheet era:
-- `bands_seen.py` - Band frequency analysis
-- `duplicates.py` - Find duplicate entries
-- `venues.py` - Venue analysis
-- `most_by_letter.py` - Letter frequency analysis
+This is a personal project tracking my concert history. Feel free to fork and adapt for your own use!
 
 ## License
 

@@ -1,9 +1,0 @@
-{
-  "Action": "Find",
-  "Properties": {
-    "Locale": "en-US",
-    "Selector": "Filter(Shows, true)",
-    "MaxRows": "10"
-  },
-  "Rows": []
-}
