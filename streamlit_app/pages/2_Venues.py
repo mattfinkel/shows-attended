@@ -8,8 +8,16 @@ import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 from db import get_db
+from auth import check_password, show_logout_button
 
 st.set_page_config(page_title="Venues", page_icon="📍", layout="wide")
+
+# Check authentication
+if not check_password():
+    st.stop()
+
+# Show logout button in sidebar
+show_logout_button()
 
 # Rename "app" to "Shows" in sidebar
 st.markdown("""

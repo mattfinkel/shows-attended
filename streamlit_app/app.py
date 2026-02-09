@@ -5,6 +5,7 @@ Main page: Shows list with search and filters
 import streamlit as st
 from datetime import datetime
 from db import get_db
+from auth import check_password, show_logout_button
 
 # Page config
 st.set_page_config(
@@ -13,6 +14,13 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# Check authentication
+if not check_password():
+    st.stop()
+
+# Show logout button in sidebar
+show_logout_button()
 
 # Custom CSS for better mobile experience
 st.markdown("""
