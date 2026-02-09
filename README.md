@@ -4,7 +4,7 @@ A Streamlit web application for tracking concerts and shows attended, with band 
 
 ## Features
 
-- 📅 **Show Tracking**: Browse all 1,125+ shows with search and filters
+- 📅 **Show Tracking**: Browse shows with search and filters
 - 🎤 **Band Grouping**: Group band name variations together (e.g., "Lenny Lashley", "Lenny Lashley & Friends")
 - ✏️ **Edit Capabilities**: Edit band names, venue details, and closed status
 - 📍 **Venue Management**: Track venues with location and closed status indicators
@@ -191,22 +191,9 @@ See [TESTING.md](streamlit_app/TESTING.md) for details.
 - ✅ Statistics queries
 - ✅ Sorting (count and name)
 
-## Current Data
-
-- **1,125 shows** spanning 2006-2026
-- **1,363 unique bands** (primary bands only)
-- **342 venues**
-- **18 events**
-
-## Development History
-
-1. **AppSheet** (2006-2025) - No-code platform, limited customization
-2. **FastAPI + Vanilla JS** (Jan 2026) - Custom UI, local SQLite
-3. **Streamlit + Turso** (Feb 2026) - Current version with cloud database
-
 ## Contributing
 
-This is a personal project tracking my concert history. Feel free to fork and adapt for your own use!
+Feel free to fork and adapt for your own use!
 
 ## License
 
