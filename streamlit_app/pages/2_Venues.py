@@ -54,7 +54,9 @@ def load_venues(search="", min_shows=1, sort_by="count"):
             v.name,
             v.location,
             v.closed,
-            COUNT(s.id) as show_count
+            COUNT(s.id) as show_count,
+            MIN(s.date) as first_show,
+            MAX(s.date) as last_show
         FROM venues v
         LEFT JOIN shows s ON v.id = s.venue_id
         WHERE 1=1
@@ -179,7 +181,9 @@ else:
             df_data.append({
                 "Venue": venue_name,
                 "Location": venue['location'] or "N/A",
-                "Shows": venue['show_count']
+                "Shows": venue['show_count'],
+                "First Show": format_date(venue['first_show']) if venue['first_show'] else "N/A",
+                "Last Show": format_date(venue['last_show']) if venue['last_show'] else "N/A"
             })
         df = pd.DataFrame(df_data)
         st.dataframe(df, use_container_width=True, hide_index=True)
@@ -190,11 +194,15 @@ else:
             if venue['closed']:
                 venue_display = f"🔒 {venue_display}"
             with st.expander(f"**{venue_display}** - {venue['show_count']} show{'s' if venue['show_count'] != 1 else ''}"):
-                # Edit button and location/status
+                # Edit button and location/status/dates
                 col1, col2 = st.columns([6, 1])
                 with col1:
                     if venue['location']:
                         st.write(f"📍 {venue['location']}")
+                    if venue['first_show']:
+                        st.write(f"First show: {format_date(venue['first_show'])}")
+                    if venue['last_show']:
+                        st.write(f"Last show: {format_date(venue['last_show'])}")
                     if venue['closed']:
                         st.caption("🔒 Venue is closed")
                 with col2:
