@@ -6,6 +6,7 @@ import streamlit as st
 from datetime import datetime
 from db import get_db
 from auth import check_password, show_logout_button
+from utils import format_date, inject_sidebar_css
 
 # Page config
 st.set_page_config(
@@ -74,28 +75,10 @@ st.markdown("""
         border: 2px solid #FF6B6B;
         margin: 0.5rem 0;
     }
-
-    /* Rename "app" to "Shows" in sidebar */
-    [data-testid="stSidebarNav"] ul li:first-child a span {
-        visibility: hidden;
-        position: relative;
-        width: auto;
-        min-width: 60px;
-    }
-    [data-testid="stSidebarNav"] ul li:first-child a span::before {
-        content: "Shows";
-        visibility: visible;
-        position: absolute;
-        left: 0;
-        white-space: nowrap;
-    }
     </style>
 """, unsafe_allow_html=True)
 
-def format_date(date_str):
-    """Format date string"""
-    dt = datetime.strptime(date_str, "%Y-%m-%d")
-    return dt.strftime("%b %d, %Y")
+inject_sidebar_css()
 
 def load_shows(search="", year=None):
     """Load shows with filters"""
@@ -143,12 +126,45 @@ def load_shows(search="", year=None):
     cursor.execute(query, params)
     return cursor.fetchall()
 
+@st.cache_data(ttl=300)
 def load_years():
     """Load available years"""
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("SELECT DISTINCT strftime('%Y', date) as year FROM shows ORDER BY year DESC")
     return [row['year'] for row in cursor.fetchall()]
+
+def cleanup_edit_state(show_id):
+    """Clean up all session state keys for a show edit"""
+    keys_to_remove = [
+        f'edit_bands_{show_id}',
+        f'confirm_delete_{show_id}',
+        f'edit_last_venue_lookup_{show_id}',
+        f'edit_venue_location_input_{show_id}',
+        f'edit_venue_name_input_{show_id}',
+        f'new_event_name_{show_id}',
+    ]
+    for key in keys_to_remove:
+        st.session_state.pop(key, None)
+    st.session_state.pop('editing_show_id', None)
+
+def cleanup_add_state():
+    """Clean up all session state keys for adding a show"""
+    keys_to_remove = [
+        'add_show_bands', 'add_venue_name_input',
+        'add_venue_location_input', 'last_venue_lookup',
+    ]
+    for key in keys_to_remove:
+        st.session_state.pop(key, None)
+    st.session_state.pop('adding_show', None)
+
+def clear_data_caches():
+    """Clear cached data after modifications"""
+    load_years.clear()
+    get_all_bands.clear()
+    get_all_venues.clear()
+    get_all_events.clear()
+    get_sidebar_stats.clear()
 
 def delete_show(show_id):
     """Delete a show and cleanup orphans"""
@@ -166,12 +182,14 @@ def delete_show(show_id):
         cursor.execute("DELETE FROM events WHERE id NOT IN (SELECT DISTINCT event_id FROM shows WHERE event_id IS NOT NULL)")
 
         conn.commit()
+        clear_data_caches()
         return True
     except Exception as e:
         conn.rollback()
         st.error(f"Error deleting show: {e}")
         return False
 
+@st.cache_data(ttl=300)
 def get_all_bands():
     """Get all band names for autocomplete"""
     conn = get_db()
@@ -179,6 +197,7 @@ def get_all_bands():
     cursor.execute("SELECT name FROM bands ORDER BY name")
     return [row['name'] for row in cursor.fetchall()]
 
+@st.cache_data(ttl=300)
 def get_all_venues():
     """Get all venue names for autocomplete"""
     conn = get_db()
@@ -186,12 +205,25 @@ def get_all_venues():
     cursor.execute("SELECT name, location FROM venues ORDER BY name")
     return [(row['name'], row['location']) for row in cursor.fetchall()]
 
+@st.cache_data(ttl=300)
 def get_all_events():
     """Get all event names for autocomplete"""
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("SELECT name FROM events ORDER BY name")
     return [row['name'] for row in cursor.fetchall()]
+
+@st.cache_data(ttl=300)
+def get_sidebar_stats():
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM shows")
+    total_shows = cursor.fetchone()[0]
+    cursor.execute("SELECT COUNT(*) FROM bands WHERE primary_band_id IS NULL")
+    total_bands = cursor.fetchone()[0]
+    cursor.execute("SELECT COUNT(*) FROM venues")
+    total_venues = cursor.fetchone()[0]
+    return total_shows, total_bands, total_venues
 
 def lookup_venue_address(venue_name):
     """Look up venue address using Nominatim (OpenStreetMap)"""
@@ -241,16 +273,8 @@ with st.sidebar:
 
     st.divider()
 
-    # Quick stats
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT COUNT(*) FROM shows")
-    total_shows = cursor.fetchone()[0]
-    cursor.execute("SELECT COUNT(*) FROM bands")
-    total_bands = cursor.fetchone()[0]
-    cursor.execute("SELECT COUNT(*) FROM venues")
-    total_venues = cursor.fetchone()[0]
-
+    # Quick stats (cached)
+    total_shows, total_bands, total_venues = get_sidebar_stats()
     st.metric("Total Shows", total_shows)
     st.metric("Bands Seen", total_bands)
     st.metric("Venues", total_venues)
@@ -455,9 +479,7 @@ if 'editing_show_id' in st.session_state:
 
         with col1:
             if st.button("Cancel", use_container_width=True):
-                del st.session_state.editing_show_id
-                if f'edit_bands_{show_id}' in st.session_state:
-                    del st.session_state[f'edit_bands_{show_id}']
+                cleanup_edit_state(show_id)
                 st.rerun()
 
         with col2:
@@ -517,10 +539,9 @@ if 'editing_show_id' in st.session_state:
                             )
 
                         conn.commit()
+                        clear_data_caches()
                         st.success("Show updated successfully!")
-                        del st.session_state.editing_show_id
-                        if f'edit_bands_{show_id}' in st.session_state:
-                            del st.session_state[f'edit_bands_{show_id}']
+                        cleanup_edit_state(show_id)
                         st.rerun()
 
                     except Exception as e:
@@ -549,11 +570,7 @@ if 'editing_show_id' in st.session_state:
                 if st.button("✓ Yes, Delete Forever", use_container_width=True, type="primary"):
                     if delete_show(show_id):
                         st.success("Show deleted!")
-                        del st.session_state.editing_show_id
-                        if f'edit_bands_{show_id}' in st.session_state:
-                            del st.session_state[f'edit_bands_{show_id}']
-                        if f'confirm_delete_{show_id}' in st.session_state:
-                            del st.session_state[f'confirm_delete_{show_id}']
+                        cleanup_edit_state(show_id)
                         st.rerun()
             with col_no:
                 if st.button("✗ Cancel", use_container_width=True):
@@ -694,15 +711,7 @@ if 'adding_show' in st.session_state and st.session_state.adding_show:
 
         with col1:
             if st.button("Cancel", use_container_width=True):
-                st.session_state.adding_show = False
-                st.session_state.add_show_bands = []
-                # Clear venue state
-                if 'add_venue_name_input' in st.session_state:
-                    del st.session_state.add_venue_name_input
-                if 'add_venue_location_input' in st.session_state:
-                    del st.session_state.add_venue_location_input
-                if 'last_venue_lookup' in st.session_state:
-                    del st.session_state.last_venue_lookup
+                cleanup_add_state()
                 st.rerun()
 
         with col2:
@@ -759,16 +768,9 @@ if 'adding_show' in st.session_state and st.session_state.adding_show:
                                          (show_id, band_id, order))
 
                         conn.commit()
+                        clear_data_caches()
                         st.success("✅ Show added successfully!")
-                        st.session_state.adding_show = False
-                        st.session_state.add_show_bands = []
-                        # Clear venue state
-                        if 'add_venue_name_input' in st.session_state:
-                            del st.session_state.add_venue_name_input
-                        if 'add_venue_location_input' in st.session_state:
-                            del st.session_state.add_venue_location_input
-                        if 'last_venue_lookup' in st.session_state:
-                            del st.session_state.last_venue_lookup
+                        cleanup_add_state()
                         st.rerun()
 
                     except Exception as e:

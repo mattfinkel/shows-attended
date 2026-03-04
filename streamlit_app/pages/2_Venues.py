@@ -2,13 +2,12 @@
 Venues Statistics Page
 """
 import streamlit as st
-from datetime import datetime
-import pandas as pd
 import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 from db import get_db
 from auth import check_password, show_logout_button
+from utils import format_date, inject_sidebar_css
 
 st.set_page_config(page_title="Venues", page_icon="📍", layout="wide")
 
@@ -19,29 +18,7 @@ if not check_password():
 # Show logout button in sidebar
 show_logout_button()
 
-# Rename "app" to "Shows" in sidebar
-st.markdown("""
-    <style>
-    /* Rename "app" to "Shows" in sidebar */
-    [data-testid="stSidebarNav"] ul li:first-child a span {
-        visibility: hidden;
-        position: relative;
-        width: auto;
-        min-width: 60px;
-    }
-    [data-testid="stSidebarNav"] ul li:first-child a span::before {
-        content: "Shows";
-        visibility: visible;
-        position: absolute;
-        left: 0;
-        white-space: nowrap;
-    }
-    </style>
-""", unsafe_allow_html=True)
-
-def format_date(date_str):
-    dt = datetime.strptime(date_str, "%Y-%m-%d")
-    return dt.strftime("%b %d, %Y")
+inject_sidebar_css()
 
 def load_venues(search="", min_shows=1, sort_by="count"):
     """Load venue statistics"""
@@ -83,6 +60,7 @@ def load_venues(search="", min_shows=1, sort_by="count"):
     cursor.execute(query, params)
     return cursor.fetchall()
 
+@st.cache_data(ttl=300)
 def load_venue_shows(venue_id):
     """Load all shows at a venue"""
     conn = get_db()
@@ -160,6 +138,14 @@ with col2:
 with col3:
     sort_by = st.selectbox("Sort by", ["Count", "Name"], index=0)
 
+# Clear lazy-load state when filters change
+filter_key = f"{search}_{min_shows}_{sort_by}"
+if st.session_state.get("_venues_filter_key") != filter_key:
+    st.session_state["_venues_filter_key"] = filter_key
+    for key in list(st.session_state):
+        if key.startswith("show_venue_shows_"):
+            del st.session_state[key]
+
 # Load venues
 venues = load_venues(search, min_shows, sort_by.lower())
 
@@ -173,20 +159,17 @@ else:
 
     if view_mode == "Table":
         # Table view
-        df_data = []
-        for venue in venues:
-            venue_name = venue['name']
-            if venue['closed']:
-                venue_name = f"🔒 {venue_name}"
-            df_data.append({
-                "Venue": venue_name,
+        table_data = [
+            {
+                "Venue": f"🔒 {venue['name']}" if venue['closed'] else venue['name'],
                 "Location": venue['location'] or "N/A",
                 "Shows": venue['show_count'],
                 "First Show": format_date(venue['first_show']) if venue['first_show'] else "N/A",
                 "Last Show": format_date(venue['last_show']) if venue['last_show'] else "N/A"
-            })
-        df = pd.DataFrame(df_data)
-        st.dataframe(df, use_container_width=True, hide_index=True)
+            }
+            for venue in venues
+        ]
+        st.dataframe(table_data, use_container_width=True, hide_index=True)
     else:
         # Card view with expandable shows
         for venue in venues:
@@ -211,16 +194,22 @@ else:
 
                 st.divider()
 
-                # Load and display shows
-                shows = load_venue_shows(venue['id'])
+                # Lazy-load shows only when requested
+                show_key = f"show_venue_shows_{venue['id']}"
+                if not st.session_state.get(show_key):
+                    if st.button(f"Load {venue['show_count']} shows", key=f"load_shows_{venue['id']}", use_container_width=True):
+                        st.session_state[show_key] = True
+                        st.rerun()
 
-                if shows:
-                    st.write(f"**All {len(shows)} shows:**")
-                    for show in shows:
-                        col1, col2 = st.columns([4, 2])
-                        with col1:
-                            st.write(f"**{format_date(show['date'])}** - {show['all_bands']}")
-                            if show['event']:
-                                st.caption(f"_Event: {show['event']}_")
-                        with col2:
-                            st.caption(f"Show #{show['id']}")
+                if st.session_state.get(show_key):
+                    shows = load_venue_shows(venue['id'])
+
+                    if shows:
+                        for show in shows:
+                            col1, col2 = st.columns([4, 2])
+                            with col1:
+                                st.write(f"**{format_date(show['date'])}** - {show['all_bands']}")
+                                if show['event']:
+                                    st.caption(f"_Event: {show['event']}_")
+                            with col2:
+                                st.caption(f"Show #{show['id']}")
