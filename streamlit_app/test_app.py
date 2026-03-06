@@ -406,6 +406,61 @@ class TestSortingQueries:
         assert names == sorted(names)
 
 
+class TestBandNameParsing:
+    """Test band name parsing and matching from event names"""
+
+    def test_split_simple_comma_separated(self):
+        from app import split_band_names
+        assert split_band_names("Band A, Band B, Band C") == ["Band A", "Band B", "Band C"]
+
+    def test_split_single_band(self):
+        from app import split_band_names
+        assert split_band_names("Solo Band") == ["Solo Band"]
+
+    def test_split_preserves_parenthetical_commas(self):
+        from app import split_band_names
+        result = split_band_names("Control Defect, North By North (Chi.), Majora (Alt Rock, Noise Pop, Grunge)")
+        assert result == ["Control Defect", "North By North (Chi.)", "Majora (Alt Rock, Noise Pop, Grunge)"]
+
+    def test_split_nested_parens(self):
+        from app import split_band_names
+        result = split_band_names("Band A (feat. B (remix)), Band C")
+        assert result == ["Band A (feat. B (remix))", "Band C"]
+
+    def test_split_strips_whitespace(self):
+        from app import split_band_names
+        assert split_band_names("  Band A ,  Band B  ") == ["Band A", "Band B"]
+
+    def test_split_empty_string(self):
+        from app import split_band_names
+        assert split_band_names("") == []
+
+    def test_split_skips_empty_segments(self):
+        from app import split_band_names
+        assert split_band_names("Band A,, Band B") == ["Band A", "Band B"]
+
+    def test_match_band_exact(self):
+        from app import match_band_name
+        assert match_band_name("Radiohead", ["Radiohead", "Tool"]) == "Radiohead"
+
+    def test_match_band_case_insensitive(self):
+        from app import match_band_name
+        assert match_band_name("radiohead", ["Radiohead", "Tool"]) == "Radiohead"
+
+    def test_match_band_no_match(self):
+        from app import match_band_name
+        assert match_band_name("New Band", ["Radiohead", "Tool"]) == "New Band"
+
+    def test_match_band_strips_whitespace(self):
+        from app import match_band_name
+        assert match_band_name("  Radiohead  ", ["Radiohead"]) == "Radiohead"
+
+    def test_match_band_no_partial_match(self):
+        """Ensure 'Control Defect' does NOT match 'Control'"""
+        from app import match_band_name
+        assert match_band_name("Control Defect", ["Control", "Tool"]) == "Control Defect"
+
+
 if __name__ == "__main__":
     # Run tests with pytest
     pytest.main([__file__, "-v", "--tb=short"])

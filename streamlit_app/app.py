@@ -226,6 +226,35 @@ def get_sidebar_stats():
     total_venues = cursor.fetchone()[0]
     return total_shows, total_bands, total_venues
 
+def split_band_names(event_name):
+    """Split an event name into band names, respecting parentheses.
+
+    Commas inside parentheses are ignored so descriptions like
+    'Majora (Alt Rock, Noise Pop, Grunge)' stay together.
+    """
+    bands = []
+    current = []
+    depth = 0
+    for char in event_name:
+        if char == '(':
+            depth += 1
+            current.append(char)
+        elif char == ')':
+            depth = max(0, depth - 1)
+            current.append(char)
+        elif char == ',' and depth == 0:
+            part = ''.join(current).strip()
+            if part:
+                bands.append(part)
+            current = []
+        else:
+            current.append(char)
+    part = ''.join(current).strip()
+    if part:
+        bands.append(part)
+    return bands
+
+
 def match_band_name(scraped_name, existing_bands):
     """Match a scraped band name against existing DB bands (case-insensitive).
 
@@ -664,7 +693,7 @@ if 'adding_show' in st.session_state and st.session_state.adding_show:
                     st.session_state['import_upcoming_id'] = r['id']
                     # Parse bands from event name and match against existing DB bands
                     all_existing = get_all_bands()
-                    raw_bands = [b.strip() for b in r['event_name'].split(',') if b.strip()]
+                    raw_bands = split_band_names(r['event_name'])
                     bands = [match_band_name(b, all_existing) for b in raw_bands]
                     st.session_state.add_show_bands = bands
                     st.rerun()
