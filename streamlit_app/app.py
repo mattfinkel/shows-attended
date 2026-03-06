@@ -3,7 +3,7 @@ Shows Attended - Streamlit App
 Main page: Shows list with search and filters
 """
 import streamlit as st
-from datetime import datetime
+from datetime import datetime, timedelta
 from db import get_db
 from auth import check_password, show_logout_button
 from utils import format_date, inject_sidebar_css
@@ -153,6 +153,7 @@ def cleanup_add_state():
     keys_to_remove = [
         'add_show_bands', 'add_venue_name_input',
         'add_venue_location_input', 'last_venue_lookup',
+        'import_upcoming_id',
     ]
     for key in keys_to_remove:
         st.session_state.pop(key, None)
@@ -224,6 +225,65 @@ def get_sidebar_stats():
     cursor.execute("SELECT COUNT(*) FROM venues")
     total_venues = cursor.fetchone()[0]
     return total_shows, total_bands, total_venues
+
+def match_band_name(scraped_name, existing_bands):
+    """Match a scraped band name against existing DB bands (case-insensitive).
+
+    Returns the canonical DB name if found, otherwise the original scraped name.
+    """
+    scraped_lower = scraped_name.lower().strip()
+    for db_name in existing_bands:
+        if db_name.lower() == scraped_lower:
+            return db_name
+    return scraped_name.strip()
+
+
+def match_venue_name(scraped_name, venue_names):
+    """Match a scraped venue name against existing DB venues (case-insensitive).
+
+    Returns (index_in_venue_names, canonical_name) if found, otherwise (None, scraped_name).
+    """
+    scraped_lower = scraped_name.lower().strip()
+    for i, db_name in enumerate(venue_names):
+        if db_name.lower() == scraped_lower:
+            return i, db_name
+    return None, scraped_name
+
+
+def get_recent_upcoming_shows():
+    """Get upcoming_shows from the past week that haven't been added to shows yet.
+
+    Returns list of dicts with id, event_name, date, venue, matched_artist, price, url.
+    Excludes shows where a show already exists on the same date at a venue with a matching name.
+    """
+    conn = get_db()
+    cursor = conn.cursor()
+
+    # Check if table exists
+    cursor.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='upcoming_shows'"
+    )
+    if not cursor.fetchone():
+        return []
+
+    today = datetime.now()
+    week_ago = (today - timedelta(days=7)).strftime("%Y-%m-%d")
+    today_str = today.strftime("%Y-%m-%d")
+
+    cursor.execute(
+        """SELECT u.id, u.event_name, u.date, u.venue, u.matched_artist, u.price, u.url
+           FROM upcoming_shows u
+           WHERE u.date >= ? AND u.date <= ?
+             AND NOT EXISTS (
+               SELECT 1 FROM shows s
+               JOIN venues v ON s.venue_id = v.id
+               WHERE s.date = u.date AND LOWER(v.name) = LOWER(u.venue)
+             )
+           ORDER BY u.date DESC""",
+        [week_ago, today_str],
+    )
+    return cursor.fetchall()
+
 
 def lookup_venue_address(venue_name):
     """Look up venue address using Nominatim (OpenStreetMap)"""
@@ -589,8 +649,44 @@ if 'adding_show' in st.session_state and st.session_state.adding_show:
         if 'add_show_bands' not in st.session_state:
             st.session_state.add_show_bands = []
 
+        # Import from recent upcoming shows
+        recent = get_recent_upcoming_shows()
+        if recent:
+            options = [""] + [
+                f"{r['date']} - {r['event_name']} @ {r['venue']}"
+                for r in recent
+            ]
+            selected = st.selectbox("Import from recent show", options, key="import_upcoming_select")
+            if selected:
+                idx = options.index(selected) - 1
+                r = recent[idx]
+                if st.session_state.get('import_upcoming_id') != r['id']:
+                    st.session_state['import_upcoming_id'] = r['id']
+                    # Parse bands from event name and match against existing DB bands
+                    all_existing = get_all_bands()
+                    raw_bands = [b.strip() for b in r['event_name'].split(',') if b.strip()]
+                    bands = [match_band_name(b, all_existing) for b in raw_bands]
+                    st.session_state.add_show_bands = bands
+                    st.rerun()
+
+            st.divider()
+
+        # Determine defaults from import
+        imported = None
+        if recent and 'import_upcoming_id' in st.session_state:
+            for r in recent:
+                if r['id'] == st.session_state['import_upcoming_id']:
+                    imported = r
+                    break
+
         # Date
-        show_date = st.date_input("📅 Date", value=date.today())
+        default_date = date.today()
+        if imported:
+            try:
+                default_date = datetime.strptime(imported['date'], "%Y-%m-%d").date()
+            except ValueError:
+                pass
+        show_date = st.date_input("📅 Date", value=default_date)
 
         st.divider()
 
@@ -610,15 +706,22 @@ if 'adding_show' in st.session_state and st.session_state.adding_show:
                     st.session_state.add_show_bands.append(new_band)
                     st.rerun()
 
-        # Display current bands
+        # Display current bands with new/existing indicators
         if st.session_state.add_show_bands:
+            existing_lower = {b.lower() for b in all_bands}
             for i, band in enumerate(st.session_state.add_show_bands):
-                col1, col2, col3 = st.columns([1, 5, 1])
+                is_existing = band.lower() in existing_lower
+                col1, col2, col3, col4 = st.columns([1, 5, 1, 1])
                 with col1:
                     st.write(f"**{i+1}.**")
                 with col2:
                     st.write(band)
                 with col3:
+                    if is_existing:
+                        st.caption("existing")
+                    else:
+                        st.caption(":red[**new**]")
+                with col4:
                     if st.button("✕", key=f"remove_add_band_{i}"):
                         st.session_state.add_show_bands.pop(i)
                         st.rerun()
@@ -633,7 +736,16 @@ if 'adding_show' in st.session_state and st.session_state.adding_show:
         all_venues = get_all_venues()
         venue_names = [v[0] for v in all_venues]
 
-        venue = st.selectbox("Venue", ["", "+ New Venue"] + venue_names)
+        # Pre-select venue if imported (case-insensitive match)
+        default_venue_idx = 0
+        if imported:
+            venue_idx, _matched_name = match_venue_name(imported['venue'], venue_names)
+            if venue_idx is not None:
+                default_venue_idx = venue_idx + 2  # +2 for "" and "+ New Venue"
+            else:
+                default_venue_idx = 1  # "+ New Venue"
+
+        venue = st.selectbox("Venue", ["", "+ New Venue"] + venue_names, index=default_venue_idx)
 
         venue_name = venue
         venue_location = None
@@ -642,6 +754,10 @@ if 'adding_show' in st.session_state and st.session_state.adding_show:
             # Initialize session state for new venue
             if 'last_venue_lookup' not in st.session_state:
                 st.session_state.last_venue_lookup = ""
+
+            # Pre-fill venue name from import if available
+            if imported and 'add_venue_name_input' not in st.session_state:
+                st.session_state['add_venue_name_input'] = imported['venue']
 
             venue_name = st.text_input(
                 "Venue name*",
