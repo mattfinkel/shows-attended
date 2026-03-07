@@ -1,9 +1,13 @@
 """
 Database connection module for Turso
-Provides sqlite3-compatible interface for libsql
+Uses libsql_experimental SDK (libsql-client is deprecated and hangs
+on regional Turso URLs).
 """
+import time
+
 import streamlit as st
-from libsql_client import create_client_sync
+import libsql_experimental as libsql
+
 
 class Row:
     """Wrapper to provide dict-like access to row data"""
@@ -20,62 +24,66 @@ class Row:
     def keys(self):
         return self._columns
 
+
 class Cursor:
-    """Wrapper to provide sqlite3 cursor-like interface"""
-    def __init__(self, client):
-        self._client = client
-        self._result = None
+    """Wrapper that adds dict-like Row access to libsql cursors."""
+    def __init__(self, raw_cursor):
+        self._cursor = raw_cursor
 
     def execute(self, query, params=None):
-        """Execute a query"""
         if params:
-            # Convert ? placeholders to positional parameters for libsql
-            self._result = self._client.execute(query, params)
+            # libsql_experimental requires tuples, not lists
+            self._cursor.execute(query, tuple(params))
         else:
-            self._result = self._client.execute(query)
+            self._cursor.execute(query)
         return self
 
     def fetchone(self):
-        """Fetch one row"""
-        if not self._result or not self._result.rows:
+        row = self._cursor.fetchone()
+        if row is None:
             return None
-        row = self._result.rows[0]
-        if self._result.columns:
-            return Row(self._result.columns, row)
-        return row
+        columns = [desc[0] for desc in self._cursor.description]
+        return Row(columns, row)
 
     def fetchall(self):
-        """Fetch all rows"""
-        if not self._result or not self._result.rows:
+        rows = self._cursor.fetchall()
+        if not rows:
             return []
-        if self._result.columns:
-            return [Row(self._result.columns, row) for row in self._result.rows]
-        return self._result.rows
+        columns = [desc[0] for desc in self._cursor.description]
+        return [Row(columns, row) for row in rows]
+
+    @property
+    def lastrowid(self):
+        return self._cursor.lastrowid
+
 
 class Connection:
-    """Wrapper to provide sqlite3 connection-like interface"""
-    def __init__(self, client):
-        self._client = client
-        self.row_factory = None
+    """Wrapper that returns dict-like Row cursors."""
+    def __init__(self, conn):
+        self._conn = conn
 
     def cursor(self):
-        """Create a cursor"""
-        return Cursor(self._client)
+        return Cursor(self._conn.cursor())
 
     def commit(self):
-        """Commit transaction (auto-commit in libsql)"""
-        pass
+        self._conn.commit()
+        self._conn.sync()
+
+    def rollback(self):
+        self._conn.rollback()
 
     def execute(self, query, params=None):
-        """Execute a query directly on the connection"""
         cursor = self.cursor()
         return cursor.execute(query, params)
 
+
 @st.cache_resource
 def get_db():
-    """Get database connection to Turso"""
-    client = create_client_sync(
-        url=st.secrets["turso"]["database_url"],
-        auth_token=st.secrets["turso"]["auth_token"]
+    """Get database connection to Turso (embedded replica for fast reads)"""
+    conn = libsql.connect(
+        "shows-attended",
+        sync_url=st.secrets["turso"]["database_url"],
+        auth_token=st.secrets["turso"]["auth_token"],
     )
-    return Connection(client)
+    conn.sync()
+    return Connection(conn)

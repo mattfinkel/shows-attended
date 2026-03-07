@@ -303,6 +303,7 @@ def get_recent_upcoming_shows():
         """SELECT u.id, u.event_name, u.date, u.venue, u.matched_artist, u.price, u.url
            FROM upcoming_shows u
            WHERE u.date >= ? AND u.date <= ?
+             AND (u.rsvp IS NULL OR u.rsvp NOT IN ('no', 'hidden'))
              AND NOT EXISTS (
                SELECT 1 FROM shows s
                JOIN venues v ON s.venue_id = v.id
@@ -446,26 +447,43 @@ if 'editing_show_id' in st.session_state:
 
         all_bands = get_all_bands()
 
-        col1, col2 = st.columns([5, 1])
-        with col1:
-            new_band = st.selectbox("Add band", [""] + all_bands, key=f"band_select_{show_id}")
-        with col2:
-            st.write("")
-            st.write("")
-            if st.button("Add", key=f"add_band_{show_id}"):
-                if new_band and new_band not in edit_bands:
-                    edit_bands.append(new_band)
-                    st.rerun()
+        band_choice = st.selectbox("Add band", ["", "+ New Band"] + all_bands, key=f"band_select_{show_id}")
+
+        if band_choice == "+ New Band":
+            col1, col2 = st.columns([5, 1])
+            with col1:
+                new_band_name = st.text_input("Band name", key=f"new_band_input_{show_id}", placeholder="Type a new band name...")
+            with col2:
+                st.write("")
+                st.write("")
+                if st.button("Add", key=f"add_new_band_{show_id}"):
+                    if new_band_name and new_band_name not in edit_bands:
+                        edit_bands.append(new_band_name)
+                        st.rerun()
+        elif band_choice:
+            if band_choice not in edit_bands:
+                edit_bands.append(band_choice)
+                st.rerun()
 
         # Display current bands
         if edit_bands:
             for i, band in enumerate(edit_bands):
-                col1, col2, col3 = st.columns([1, 5, 1])
+                col1, col2, col3, col4, col5 = st.columns([1, 5, 1, 1, 1])
                 with col1:
                     st.write(f"**{i+1}.**")
                 with col2:
                     st.write(band)
                 with col3:
+                    if i > 0:
+                        if st.button("▲", key=f"up_band_{show_id}_{i}"):
+                            edit_bands[i-1], edit_bands[i] = edit_bands[i], edit_bands[i-1]
+                            st.rerun()
+                with col4:
+                    if i < len(edit_bands) - 1:
+                        if st.button("▼", key=f"down_band_{show_id}_{i}"):
+                            edit_bands[i], edit_bands[i+1] = edit_bands[i+1], edit_bands[i]
+                            st.rerun()
+                with col5:
                     if st.button("✕", key=f"remove_band_{show_id}_{i}"):
                         edit_bands.pop(i)
                         st.rerun()
@@ -724,23 +742,30 @@ if 'adding_show' in st.session_state and st.session_state.adding_show:
 
         all_bands = get_all_bands()
 
-        col1, col2 = st.columns([5, 1])
-        with col1:
-            new_band = st.selectbox("Add band", [""] + all_bands, key="add_band_select")
-        with col2:
-            st.write("")
-            st.write("")
-            if st.button("Add", key="add_band_btn"):
-                if new_band and new_band not in st.session_state.add_show_bands:
-                    st.session_state.add_show_bands.append(new_band)
-                    st.rerun()
+        band_choice = st.selectbox("Add band", ["", "+ New Band"] + all_bands, key="add_band_select")
+
+        if band_choice == "+ New Band":
+            col1, col2 = st.columns([5, 1])
+            with col1:
+                new_band_name = st.text_input("Band name", key="add_new_band_input", placeholder="Type a new band name...")
+            with col2:
+                st.write("")
+                st.write("")
+                if st.button("Add", key="add_new_band_btn"):
+                    if new_band_name and new_band_name not in st.session_state.add_show_bands:
+                        st.session_state.add_show_bands.append(new_band_name)
+                        st.rerun()
+        elif band_choice:
+            if band_choice not in st.session_state.add_show_bands:
+                st.session_state.add_show_bands.append(band_choice)
+                st.rerun()
 
         # Display current bands with new/existing indicators
         if st.session_state.add_show_bands:
             existing_lower = {b.lower() for b in all_bands}
             for i, band in enumerate(st.session_state.add_show_bands):
                 is_existing = band.lower() in existing_lower
-                col1, col2, col3, col4 = st.columns([1, 5, 1, 1])
+                col1, col2, col3, col4, col5, col6 = st.columns([1, 5, 1, 1, 1, 1])
                 with col1:
                     st.write(f"**{i+1}.**")
                 with col2:
@@ -751,6 +776,16 @@ if 'adding_show' in st.session_state and st.session_state.adding_show:
                     else:
                         st.caption(":red[**new**]")
                 with col4:
+                    if i > 0:
+                        if st.button("▲", key=f"up_add_band_{i}"):
+                            st.session_state.add_show_bands[i-1], st.session_state.add_show_bands[i] = st.session_state.add_show_bands[i], st.session_state.add_show_bands[i-1]
+                            st.rerun()
+                with col5:
+                    if i < len(st.session_state.add_show_bands) - 1:
+                        if st.button("▼", key=f"down_add_band_{i}"):
+                            st.session_state.add_show_bands[i], st.session_state.add_show_bands[i+1] = st.session_state.add_show_bands[i+1], st.session_state.add_show_bands[i]
+                            st.rerun()
+                with col6:
                     if st.button("✕", key=f"remove_add_band_{i}"):
                         st.session_state.add_show_bands.pop(i)
                         st.rerun()
