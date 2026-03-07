@@ -61,13 +61,23 @@ class Connection:
     """Wrapper that returns dict-like Row cursors."""
     def __init__(self, conn):
         self._conn = conn
+        self._last_sync = time.time()
+
+    def sync_if_stale(self, max_age_seconds=60):
+        """Sync from remote if the local replica is older than max_age_seconds."""
+        now = time.time()
+        if now - self._last_sync > max_age_seconds:
+            self._conn.sync()
+            self._last_sync = now
 
     def cursor(self):
+        self.sync_if_stale()
         return Cursor(self._conn.cursor())
 
     def commit(self):
         self._conn.commit()
         self._conn.sync()
+        self._last_sync = time.time()
 
     def rollback(self):
         self._conn.rollback()
