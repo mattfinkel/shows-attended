@@ -135,6 +135,8 @@ ensure_rsvp_column()
 with st.sidebar:
     st.header("Filters")
     rsvp_filter = st.selectbox("RSVP Status", ["All", "Going", "Maybe", "Not going", "No response"])
+    hide_no_rsvp = st.checkbox("Hide 'Not going'", value=True)
+    only_new = st.checkbox("Only new listings")
     show_hidden = st.checkbox("Show hidden")
 
 shows = load_upcoming_shows(show_hidden=show_hidden)
@@ -144,6 +146,14 @@ if rsvp_filter != "All":
     filter_map = {"Going": "yes", "Maybe": "maybe", "Not going": "no", "No response": None}
     filter_val = filter_map[rsvp_filter]
     shows = [s for s in shows if s["rsvp"] == filter_val]
+
+# Hide "Not going" by default
+if hide_no_rsvp:
+    shows = [s for s in shows if s["rsvp"] != "no"]
+
+# Only show listings with no RSVP yet
+if only_new:
+    shows = [s for s in shows if s["rsvp"] is None]
 
 if not shows:
     st.info("No upcoming shows found matching your filters.")
