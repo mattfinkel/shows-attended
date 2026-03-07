@@ -50,4 +50,4 @@ webapp_fastapi_old/database/shows.db
 webapp_fastapi_old/server.log
 streamlit_app/streamlit.log
 nohup.out
-*.log 
+*.log .claude/
