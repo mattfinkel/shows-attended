@@ -157,6 +157,7 @@ def load_band_groups():
     """)
     return cursor.fetchall()
 
+@st.cache_data(ttl=300)
 def get_primary_band_show_count(primary_band_id):
     """Get total show count for a primary band including all aliases"""
     conn = get_db()
@@ -171,6 +172,7 @@ def get_primary_band_show_count(primary_band_id):
     result = cursor.fetchone()
     return result['total_shows'] if result else 0
 
+@st.cache_data(ttl=300)
 def get_band_show_count(band_id):
     """Get show count for a specific band (not including aliases)"""
     conn = get_db()
@@ -183,6 +185,7 @@ def get_band_show_count(band_id):
     result = cursor.fetchone()
     return result['show_count'] if result else 0
 
+@st.cache_data(ttl=300)
 def get_standalone_bands():
     """Get all bands that are not part of any group (for dropdowns)"""
     conn = get_db()

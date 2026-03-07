@@ -315,6 +315,33 @@ def get_recent_upcoming_shows():
     return cursor.fetchall()
 
 
+def get_or_create_venue(cursor, name, location=None):
+    """Get existing venue ID or create a new one."""
+    cursor.execute("SELECT id FROM venues WHERE name = ?", (name,))
+    row = cursor.fetchone()
+    if row:
+        return row['id']
+    cursor.execute("INSERT INTO venues (name, location) VALUES (?, ?)", (name, location))
+    return cursor.lastrowid
+
+def get_or_create_event(cursor, name):
+    """Get existing event ID or create a new one."""
+    cursor.execute("SELECT id FROM events WHERE name = ?", (name,))
+    row = cursor.fetchone()
+    if row:
+        return row['id']
+    cursor.execute("INSERT INTO events (name) VALUES (?)", (name,))
+    return cursor.lastrowid
+
+def get_or_create_band(cursor, name):
+    """Get existing band ID or create a new one."""
+    cursor.execute("SELECT id FROM bands WHERE name = ?", (name,))
+    row = cursor.fetchone()
+    if row:
+        return row['id']
+    cursor.execute("INSERT INTO bands (name) VALUES (?)", (name,))
+    return cursor.lastrowid
+
 def lookup_venue_address(venue_name):
     """Look up venue address using Nominatim (OpenStreetMap)"""
     import urllib.parse
@@ -598,48 +625,17 @@ if 'editing_show_id' in st.session_state:
                     st.error("❌ Please fill in venue address (use 🔍 Lookup button or enter manually)")
                 else:
                     try:
-                        # Get or create venue
-                        cursor.execute("SELECT id FROM venues WHERE name = ?", (venue_name,))
-                        venue_row = cursor.fetchone()
-                        if venue_row:
-                            venue_id = venue_row['id']
-                        else:
-                            cursor.execute("INSERT INTO venues (name, location) VALUES (?, ?)",
-                                         (venue_name, venue_location))
-                            venue_id = cursor.lastrowid
+                        venue_id = get_or_create_venue(cursor, venue_name, venue_location)
+                        event_id = get_or_create_event(cursor, event_name) if event_name else None
 
-                        # Get or create event
-                        event_id = None
-                        if event_name:
-                            cursor.execute("SELECT id FROM events WHERE name = ?", (event_name,))
-                            event_row = cursor.fetchone()
-                            if event_row:
-                                event_id = event_row['id']
-                            else:
-                                cursor.execute("INSERT INTO events (name) VALUES (?)", (event_name,))
-                                event_id = cursor.lastrowid
-
-                        # Update show
                         cursor.execute(
                             "UPDATE shows SET date = ?, venue_id = ?, event_id = ? WHERE id = ?",
                             (show_date.isoformat(), venue_id, event_id, show_id)
                         )
 
-                        # Delete existing band relationships
                         cursor.execute("DELETE FROM show_bands WHERE show_id = ?", (show_id,))
-
-                        # Add new band relationships
                         for order, band_name in enumerate(edit_bands, 1):
-                            # Get or create band
-                            cursor.execute("SELECT id FROM bands WHERE name = ?", (band_name,))
-                            band_row = cursor.fetchone()
-                            if band_row:
-                                band_id = band_row['id']
-                            else:
-                                cursor.execute("INSERT INTO bands (name) VALUES (?)", (band_name,))
-                                band_id = cursor.lastrowid
-
-                            # Create show-band relationship
+                            band_id = get_or_create_band(cursor, band_name)
                             cursor.execute(
                                 "INSERT INTO show_bands (show_id, band_id, band_order) VALUES (?, ?, ?)",
                                 (show_id, band_id, order)
@@ -657,10 +653,7 @@ if 'editing_show_id' in st.session_state:
 
         with col3:
             # Delete with confirmation
-            if f'confirm_delete_{show_id}' not in st.session_state:
-                st.session_state[f'confirm_delete_{show_id}'] = False
-
-            if not st.session_state[f'confirm_delete_{show_id}']:
+            if not st.session_state.get(f'confirm_delete_{show_id}', False):
                 if st.button("🗑️ Delete", use_container_width=True):
                     st.session_state[f'confirm_delete_{show_id}'] = True
                     st.rerun()
@@ -906,44 +899,15 @@ if 'adding_show' in st.session_state and st.session_state.adding_show:
                     cursor = conn.cursor()
 
                     try:
-                        # Get or create venue
-                        cursor.execute("SELECT id FROM venues WHERE name = ?", (venue_name,))
-                        venue_row = cursor.fetchone()
-                        if venue_row:
-                            venue_id = venue_row['id']
-                        else:
-                            cursor.execute("INSERT INTO venues (name, location) VALUES (?, ?)",
-                                         (venue_name, venue_location))
-                            venue_id = cursor.lastrowid
+                        venue_id = get_or_create_venue(cursor, venue_name, venue_location)
+                        event_id = get_or_create_event(cursor, event_name) if event_name else None
 
-                        # Get or create event
-                        event_id = None
-                        if event_name:
-                            cursor.execute("SELECT id FROM events WHERE name = ?", (event_name,))
-                            event_row = cursor.fetchone()
-                            if event_row:
-                                event_id = event_row['id']
-                            else:
-                                cursor.execute("INSERT INTO events (name) VALUES (?)", (event_name,))
-                                event_id = cursor.lastrowid
-
-                        # Create show
                         cursor.execute("INSERT INTO shows (date, venue_id, event_id) VALUES (?, ?, ?)",
                                      (show_date.isoformat(), venue_id, event_id))
                         show_id = cursor.lastrowid
 
-                        # Add bands
                         for order, band_name in enumerate(st.session_state.add_show_bands, 1):
-                            # Get or create band
-                            cursor.execute("SELECT id FROM bands WHERE name = ?", (band_name,))
-                            band_row = cursor.fetchone()
-                            if band_row:
-                                band_id = band_row['id']
-                            else:
-                                cursor.execute("INSERT INTO bands (name) VALUES (?)", (band_name,))
-                                band_id = cursor.lastrowid
-
-                            # Create show-band relationship
+                            band_id = get_or_create_band(cursor, band_name)
                             cursor.execute("INSERT INTO show_bands (show_id, band_id, band_order) VALUES (?, ?, ?)",
                                          (show_id, band_id, order))
 

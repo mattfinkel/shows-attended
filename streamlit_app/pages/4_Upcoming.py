@@ -75,6 +75,7 @@ st.markdown("""
 st.title("🎟️ Upcoming Shows")
 
 
+@st.cache_resource
 def table_exists():
     conn = get_db()
     cursor = conn.cursor()
@@ -85,14 +86,17 @@ def table_exists():
 
 
 def ensure_rsvp_column():
-    """Add rsvp column if it doesn't exist yet."""
+    """Add rsvp column if it doesn't exist yet (runs once per session)."""
+    if st.session_state.get("_rsvp_column_checked"):
+        return
     conn = get_db()
     cursor = conn.cursor()
     try:
         cursor.execute("ALTER TABLE upcoming_shows ADD COLUMN rsvp TEXT")
         conn.commit()
     except Exception:
-        pass
+        pass  # Column already exists
+    st.session_state["_rsvp_column_checked"] = True
 
 
 def load_upcoming_shows(show_hidden=False):

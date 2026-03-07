@@ -82,10 +82,6 @@ class Connection:
     def rollback(self):
         self._conn.rollback()
 
-    def execute(self, query, params=None):
-        cursor = self.cursor()
-        return cursor.execute(query, params)
-
 
 @st.cache_resource
 def get_db():
