@@ -459,11 +459,11 @@ if 'editing_show_id' in st.session_state:
                 if st.button("Add", key=f"add_new_band_{show_id}"):
                     if new_band_name and new_band_name not in edit_bands:
                         edit_bands.append(new_band_name)
-                        st.rerun()
+                        st.rerun(scope="fragment")
         elif band_choice:
             if band_choice not in edit_bands:
                 edit_bands.append(band_choice)
-                st.rerun()
+                st.rerun(scope="fragment")
 
         # Display current bands
         if edit_bands:
@@ -477,16 +477,16 @@ if 'editing_show_id' in st.session_state:
                     if i > 0:
                         if st.button("▲", key=f"up_band_{show_id}_{i}"):
                             edit_bands[i-1], edit_bands[i] = edit_bands[i], edit_bands[i-1]
-                            st.rerun()
+                            st.rerun(scope="fragment")
                 with col4:
                     if i < len(edit_bands) - 1:
                         if st.button("▼", key=f"down_band_{show_id}_{i}"):
                             edit_bands[i], edit_bands[i+1] = edit_bands[i+1], edit_bands[i]
-                            st.rerun()
+                            st.rerun(scope="fragment")
                 with col5:
                     if st.button("✕", key=f"remove_band_{show_id}_{i}"):
                         edit_bands.pop(i)
-                        st.rerun()
+                        st.rerun(scope="fragment")
         else:
             st.info("Add at least one band")
 
@@ -754,11 +754,11 @@ if 'adding_show' in st.session_state and st.session_state.adding_show:
                 if st.button("Add", key="add_new_band_btn"):
                     if new_band_name and new_band_name not in st.session_state.add_show_bands:
                         st.session_state.add_show_bands.append(new_band_name)
-                        st.rerun()
+                        st.rerun(scope="fragment")
         elif band_choice:
             if band_choice not in st.session_state.add_show_bands:
                 st.session_state.add_show_bands.append(band_choice)
-                st.rerun()
+                st.rerun(scope="fragment")
 
         # Display current bands with new/existing indicators
         if st.session_state.add_show_bands:
@@ -779,16 +779,16 @@ if 'adding_show' in st.session_state and st.session_state.adding_show:
                     if i > 0:
                         if st.button("▲", key=f"up_add_band_{i}"):
                             st.session_state.add_show_bands[i-1], st.session_state.add_show_bands[i] = st.session_state.add_show_bands[i], st.session_state.add_show_bands[i-1]
-                            st.rerun()
+                            st.rerun(scope="fragment")
                 with col5:
                     if i < len(st.session_state.add_show_bands) - 1:
                         if st.button("▼", key=f"down_add_band_{i}"):
                             st.session_state.add_show_bands[i], st.session_state.add_show_bands[i+1] = st.session_state.add_show_bands[i+1], st.session_state.add_show_bands[i]
-                            st.rerun()
+                            st.rerun(scope="fragment")
                 with col6:
                     if st.button("✕", key=f"remove_add_band_{i}"):
                         st.session_state.add_show_bands.pop(i)
-                        st.rerun()
+                        st.rerun(scope="fragment")
         else:
             st.info("Add at least one band")
 
